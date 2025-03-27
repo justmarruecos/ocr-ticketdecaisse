@@ -82,9 +82,9 @@ def extraire_elements(ocr_result):
     calculated_total = 0.0
 
     for art in articles:
+        name = art.get("name", "").strip()
         try:
-            name = art.get("name", "").strip()
-            price_raw = str(art.get("price", "0")).replace(",", ".").replace("€", "").strip()
+            price_raw = str(art.get("price_unit", art.get("prix_unitaire", "0")))
         
             # Ignore les lignes sans prix valides ou trop courtes
             if len(name) < 3 or not price_raw.replace('.', '', 1).isdigit():
@@ -94,6 +94,9 @@ def extraire_elements(ocr_result):
             quantity = int(str(art.get("quantity", "1")).strip())
             calculated_total += price * quantity
 
+            CATEGORIES_EXCLUES = ['cremerie', 'epicerie', 'boulangerie', 'boucherie', 'poissonnerie', 'fruits et legumes']
+            if name.lower() in CATEGORIES_EXCLUES:
+                continue
             cleaned_articles.append({
                 "name": name,
                 "price_unit": price,
@@ -123,7 +126,15 @@ def extraire_elements(ocr_result):
 
     texte_complet = json.dumps(ocr_result, ensure_ascii=False)
     vendor = detect_vendor_from_text(texte_complet)
-    
+
+    texte_ticket_complet = texte_complet.lower()
+    if vendor == "Inconnu":
+        if "u express" in texte_ticket_complet:
+            vendor = "U Express"
+        elif "carrefour" in texte_ticket_complet:
+            vendor = "Carrefour"
+        # Ajoute plus de magasins ici si besoin
+
     return {
         "ticket_number": ticket_number,
         "date": date_invoice.strftime("%Y-%m-%d"),

@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import os, json
+import winsound
 from datetime import datetime
 from pixtral_ocr import perform_ocr
 from invoice_processing import extraire_elements
@@ -26,15 +27,11 @@ ocr_result_text = tk.StringVar()
 img_label = tk.Label(root)
 img_label.pack(pady=10)
 
+result_label = tk.Label(root, text="", font=("Arial", 10), fg="green")
+result_label.pack(pady=5)
+
 text_output = tk.Text(root, height=25, width=100)
 text_output.pack(pady=10)
-
-def reset_interface():
-    file_path_var.set("")
-    ocr_result_text.set("")
-    text_output.delete(1.0, tk.END)
-    img_label.configure(image='')
-    img_label.image = None
 
 def show_image_preview(path):
     img = Image.open(path)
@@ -42,6 +39,7 @@ def show_image_preview(path):
     img_tk = ImageTk.PhotoImage(img)
     img_label.configure(image=img_tk)
     img_label.image = img_tk
+
 
 def process_invoice(image_path):
     enhanced_path = enhance_image_for_ocr(image_path)
@@ -53,6 +51,7 @@ def process_invoice(image_path):
         reset_interface()  # Important : réinitialiser l'interface
         return
 
+    show_image_preview(enhanced_path)  # indispensable pour voir la photo en interface
 
     text_output.delete(1.0, tk.END)
     text_output.insert(tk.END, json.dumps(ocr_result, indent=2, ensure_ascii=False))
@@ -89,7 +88,6 @@ def process_invoice(image_path):
 
     insert_invoice_sqlite(user_id, ticket_number, vendor, date_invoice, payment_method, total, has_discount)
     for article in articles:
-        price_unit = article["price_unit"]
         insert_article_sqlite(
             ticket_number,
             article["name"],
@@ -97,23 +95,29 @@ def process_invoice(image_path):
             article["quantity"]
         )
 
+
     display_text = f"🧾 Ticket n°{ticket_number}\n📅 Date : {date_invoice}\n🏪 Magasin : {vendor}\n💳 Paiement : {payment_method}\n💶 Total : {total} €"
     if has_discount == "Oui":
         display_text += "\n🎁 Remise détectée"
     display_text += "\n🛒 Articles :"
     for article in articles:
-        display_text += f"\n - {article['name']} x {article['quantity']} = {article['price_unit']} €"
+        display_text += f"\n - {article['name']} x {article['quantity']} = {article['price_unit']} €"  # ✅ Correction
+
 
 
     ocr_result_text.set(display_text)
     articles_count = len(articles)
-    messagebox.showinfo(
-        "✅ Facture enregistrée avec succès",
-        f"🧾 Ticket n°{ticket_number}\n"
-        f"🛒 {articles_count} articles enregistrés\n"
-        f"💶 Total : {total} €"
-    )
-    reset_interface()
+    result_label.config(text=f"✅ Facture enregistrée - Ticket : {ticket_number}, Articles : {len(articles)}, Total : {total} €")
+    winsound.Beep(1000, 200)  # fréquence 1000 Hz, durée 200 ms
+
+
+def reset_interface():
+    file_path_var.set("")
+    ocr_result_text.set("")
+    text_output.delete(1.0, tk.END)
+    img_label.configure(image='')
+    img_label.image = None
+    result_label.config(text="")  # ajoute cette ligne pour vider aussi le résultat
 
 def upload_file():
     file_path = filedialog.askopenfilename(filetypes=[("Images ou PDF", "*.jpg *.jpeg *.png *.pdf")])
@@ -131,9 +135,14 @@ def capture_and_process():
         process_invoice(image_path)
 
 # Interface utilisateur
+
+scrollbar = tk.Scrollbar(root, command=text_output.yview)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+text_output.config(yscrollcommand=scrollbar.set)
+
 tk.Button(root, text="📷 Prendre une photo", command=capture_and_process, bg="#4682B4", fg="white").pack(pady=5)
 tk.Button(root, text="📤 Importer une image ou PDF", command=upload_file, bg="#32CD32", fg="white").pack(pady=5)
-tk.Button(root, text="🔄 Nouveau scan", command=reset_interface, bg="#FFA500", fg="white").pack(pady=5)
+tk.Button(root, text="🧹 Réinitialiser l'interface", command=reset_interface, bg="#FFA500", fg="white").pack(pady=5)
 
 tk.Label(root, textvariable=file_path_var, wraplength=700, fg="gray").pack()
 tk.Label(root, text="📝 Résultat OCR :", font=("Arial", 12, "bold")).pack(pady=10)

@@ -62,6 +62,14 @@ def insert_invoice_sqlite(user_id, ticket_number, vendor, date_invoice, payment_
     conn.close()
 
 def insert_article_sqlite(ticket_number, name, price_unit, quantity):
+    if isinstance(price_unit, str):
+        price_unit = price_unit.replace("€", "").replace(",", ".").strip()
+    try:
+        price_unit = float(price_unit)
+    except:
+        price_unit = 0.0
+
+
     try:
         article_total = round(price_unit * quantity, 2)
     except:

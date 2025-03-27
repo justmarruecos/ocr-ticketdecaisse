@@ -16,7 +16,8 @@ def init_db():
         date_invoice TEXT,
         payment_method TEXT,
         total REAL,
-        has_discount TEXT
+        has_discount TEXT,
+        UNIQUE(ticket_number, date_invoice)
     )
     """)
 

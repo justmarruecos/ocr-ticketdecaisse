@@ -40,6 +40,20 @@ def detect_vendor_from_text(raw_text):
             return vendor.capitalize()
     return "Inconnu"
 
+def detect_category(article_name):
+    categories = {
+        "Huile": ["huile", "lubrifiant"],
+        "Filtre": ["filtre à huile", "filtre à air", "filtre à essence"],
+        "Batterie": ["batterie"],
+        "Pneus": ["pneu", "pneus"],
+        "Freins": ["plaquette", "frein", "disque"],
+        "Autre": []
+    }
+    article_name_lower = article_name.lower()
+    for category, keywords in categories.items():
+        if any(keyword in article_name_lower for keyword in keywords):
+            return category
+    return "Pas de relation avec l'automobile"
 
 def extraire_elements(ocr_result):
     if isinstance(ocr_result, str):
@@ -82,9 +96,12 @@ def extraire_elements(ocr_result):
 
             cleaned_articles.append({
                 "name": name,
-                "price": round(price * quantity, 2),
-                "quantity": quantity
+                "price_unit": price,
+                "quantity": quantity,
+                "total": round(price * quantity, 2),
+                "category": detect_category(name)
             })
+
         except Exception:
             continue
 

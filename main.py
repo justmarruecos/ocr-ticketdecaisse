@@ -48,6 +48,11 @@ def process_invoice(image_path):
     print(f"📄 Traitement OCR pour {enhanced_path}...")
 
     ocr_result = perform_ocr(enhanced_path)
+    if not ocr_result:
+        messagebox.showerror("Erreur OCR", "🚨 OCR échoué : Impossible d'obtenir les données.")
+        reset_interface()  # Important : réinitialiser l'interface
+        return
+
 
     text_output.delete(1.0, tk.END)
     text_output.insert(tk.END, json.dumps(ocr_result, indent=2, ensure_ascii=False))
@@ -70,7 +75,7 @@ def process_invoice(image_path):
     insert_invoice_mongo(
         ticket_number=ticket_number,
         vendor=vendor,
-        client="Client Caisse",  # Valeur statique ou extraite dynamiquement si disponible
+        client_name="Client Caisse",  # Valeur statique ou extraite dynamiquement si disponible
         date_invoice=date_invoice,
         total=total,
         payment_method=payment_method,
@@ -84,11 +89,11 @@ def process_invoice(image_path):
 
     insert_invoice_sqlite(user_id, ticket_number, vendor, date_invoice, payment_method, total, has_discount)
     for article in articles:
-        price_unit = round(article["price"] / article["quantity"], 2) if article["quantity"] else article["price"]
+        price_unit = article["price_unit"]
         insert_article_sqlite(
             ticket_number,
             article["name"],
-            price_unit,
+            article["price_unit"],
             article["quantity"]
         )
 
@@ -97,11 +102,17 @@ def process_invoice(image_path):
         display_text += "\n🎁 Remise détectée"
     display_text += "\n🛒 Articles :"
     for article in articles:
-        display_text += f"\n - {article['name']} x {article['quantity']} = {article['price']} €"
+        display_text += f"\n - {article['name']} x {article['quantity']} = {article['price_unit']} €"
 
 
     ocr_result_text.set(display_text)
-    messagebox.showinfo("Succès", "✅ Facture enregistrée avec succès.")
+    articles_count = len(articles)
+    messagebox.showinfo(
+        "✅ Facture enregistrée avec succès",
+        f"🧾 Ticket n°{ticket_number}\n"
+        f"🛒 {articles_count} articles enregistrés\n"
+        f"💶 Total : {total} €"
+    )
     reset_interface()
 
 def upload_file():

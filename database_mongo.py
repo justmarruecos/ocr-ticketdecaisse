@@ -25,3 +25,8 @@ def insert_invoice_mongo(ticket_number, vendor, client_name, date_invoice, total
 
     collection.insert_one(document)
     print(f"✅ Ticket {ticket_number} stocké dans MongoDB.")
+
+def check_existing_ticket_mongo(ticket_number):
+    db = client["ocr_tickets"]
+    collection = db["tickets"]
+    return collection.find_one({"ticket_number": ticket_number}) is not None

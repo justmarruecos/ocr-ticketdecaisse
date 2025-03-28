@@ -7,7 +7,7 @@ from datetime import datetime
 from pixtral_ocr import perform_ocr
 from invoice_processing import extraire_elements
 from database_sqlite import insert_invoice_sqlite, insert_article_sqlite, check_existing_ticket, init_db
-from database_mongo import insert_invoice_mongo
+from database_mongo import check_existing_ticket_mongo, insert_invoice_mongo
 from pdf_to_img import convert_pdf_to_images
 from camera import capture_image
 from image_utils import enhance_image_for_ocr
@@ -30,8 +30,17 @@ img_label.pack(pady=10)
 result_label = tk.Label(root, text="", font=("Arial", 10), fg="green")
 result_label.pack(pady=5)
 
-text_output = tk.Text(root, height=25, width=100)
-text_output.pack(pady=10)
+frame_output = tk.Frame(root)
+frame_output.pack(pady=10, fill="both", expand=True)
+
+scrollbar = tk.Scrollbar(frame_output)
+scrollbar.pack(side="right", fill="y")
+
+text_output = tk.Text(frame_output, height=25, width=100, yscrollcommand=scrollbar.set)
+text_output.pack(side="left", fill="both", expand=True)
+
+scrollbar.config(command=text_output.yview)
+
 
 def show_image_preview(path):
     img = Image.open(path)
@@ -40,6 +49,12 @@ def show_image_preview(path):
     img_label.configure(image=img_tk)
     img_label.image = img_tk
 
+def reset_interface():
+    file_path_var.set("")
+    ocr_result_text.set("")
+    text_output.delete(1.0, tk.END)
+    img_label.configure(image='')
+    img_label.image = None
 
 def process_invoice(image_path):
     enhanced_path = enhance_image_for_ocr(image_path)
@@ -70,6 +85,9 @@ def process_invoice(image_path):
     articles = parsed.get("articles", [])
     vendor = parsed.get("vendor", "Client Caisse")
 
+    if check_existing_ticket_mongo(ticket_number):
+        messagebox.showwarning("Doublon Mongo détecté", "❗ Cette facture semble déjà enregistrée en MongoDB.")
+        return
     # Enregistrement brut dans MongoDB (maintenant avec parsed défini)
     insert_invoice_mongo(
         ticket_number=ticket_number,
@@ -110,14 +128,9 @@ def process_invoice(image_path):
     result_label.config(text=f"✅ Facture enregistrée - Ticket : {ticket_number}, Articles : {len(articles)}, Total : {total} €")
     winsound.Beep(1000, 200)  # fréquence 1000 Hz, durée 200 ms
 
+    # Réinitialiser automatiquement après 5 secondes
+    root.after(30000, reset_interface)
 
-def reset_interface():
-    file_path_var.set("")
-    ocr_result_text.set("")
-    text_output.delete(1.0, tk.END)
-    img_label.configure(image='')
-    img_label.image = None
-    result_label.config(text="")  # ajoute cette ligne pour vider aussi le résultat
 
 def upload_file():
     file_path = filedialog.askopenfilename(filetypes=[("Images ou PDF", "*.jpg *.jpeg *.png *.pdf")])
@@ -142,7 +155,7 @@ text_output.config(yscrollcommand=scrollbar.set)
 
 tk.Button(root, text="📷 Prendre une photo", command=capture_and_process, bg="#4682B4", fg="white").pack(pady=5)
 tk.Button(root, text="📤 Importer une image ou PDF", command=upload_file, bg="#32CD32", fg="white").pack(pady=5)
-tk.Button(root, text="🧹 Réinitialiser l'interface", command=reset_interface, bg="#FFA500", fg="white").pack(pady=5)
+tk.Button(root, text="🔄 Nouveau scan", command=reset_interface, bg="#FFA500", fg="white").pack(pady=5)
 
 tk.Label(root, textvariable=file_path_var, wraplength=700, fg="gray").pack()
 tk.Label(root, text="📝 Résultat OCR :", font=("Arial", 12, "bold")).pack(pady=10)

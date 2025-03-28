@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import datetime
+from difflib import get_close_matches
 
 def nettoyer_texte(texte):
     if isinstance(texte, list):
@@ -81,33 +82,38 @@ def extraire_elements(ocr_result):
     cleaned_articles = []
     calculated_total = 0.0
 
+    categories_to_ignore = ["cremerie", "epicerie", "charcuterie", "boucherie", "poissonnerie"]
+    # Dictionnaire des articles courants pour corrections basiques
+    correct_names = ["MINI BABYBEL", "YAOURT A BOIRE", "NOIX CAJOU GRILLEES SALEES", "EPINETTE"]
+
     for art in articles:
-        name = art.get("name", "").strip()
+        name = art.get("name") or art.get("nom") or "Inconnu"
+        if nettoyer_texte(name) in categories_to_ignore:
+            continue
         try:
-            price_raw = str(art.get("price_unit", art.get("prix_unitaire", "0")))
-        
-            # Ignore les lignes sans prix valides ou trop courtes
-            if len(name) < 3 or not price_raw.replace('.', '', 1).isdigit():
-                continue
+            raw_name = art.get("name") or art.get("nom") or "Inconnu"
+            # Correction automatique par similarité
+            corrected_name = get_close_matches(raw_name.upper(), correct_names, n=1, cutoff=0.6)
+            name = corrected_name[0] if corrected_name else raw_name
 
-            price = float(price_raw)
-            quantity = int(str(art.get("quantity", "1")).strip())
-            calculated_total += price * quantity
+            price = art.get("price_unit") or art.get("prix_unitaire") or art.get("price") or 0
+            price = float(str(price).replace(",", ".").replace("€", "").strip())
+            quantity = art.get("quantity") or art.get("quantite") or art.get("qte") or 1
+            quantity = int(quantity)
 
-            CATEGORIES_EXCLUES = ['cremerie', 'epicerie', 'boulangerie', 'boucherie', 'poissonnerie', 'fruits et legumes']
-            if name.lower() in CATEGORIES_EXCLUES:
-                continue
+            total_price = round(price * quantity, 2)
+            calculated_total += total_price
+
             cleaned_articles.append({
                 "name": name,
-                "price_unit": price,
+                "price_unit": round(price, 2),
                 "quantity": quantity,
-                "total": round(price * quantity, 2),
-                "category": detect_category(name)
+                "total": total_price
             })
 
-        except Exception:
+        except Exception as e:
+            print(f"[Erreur Article] : {art}, Exception: {e}")
             continue
-
 
     if total is None or not isinstance(total, (int, float, str)) or str(total).strip() == "":
         total = round(calculated_total, 2)

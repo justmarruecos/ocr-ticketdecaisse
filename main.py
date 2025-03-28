@@ -128,8 +128,8 @@ def process_invoice(image_path):
     result_label.config(text=f"✅ Facture enregistrée - Ticket : {ticket_number}, Articles : {len(articles)}, Total : {total} €")
     winsound.Beep(1000, 200)  # fréquence 1000 Hz, durée 200 ms
 
-    # Réinitialiser automatiquement après 5 secondes
-    root.after(30000, reset_interface)
+    # Réinitialiser automatiquement après 10 secondes
+    root.after(10000, reset_interface)
 
 
 def upload_file():

@@ -82,7 +82,7 @@ def extraire_elements(ocr_result):
     cleaned_articles = []
     calculated_total = 0.0
 
-    categories_to_ignore = ["cremerie", "epicerie", "charcuterie", "boucherie", "poissonnerie"]
+    categories_to_ignore = ["cremerie", "CREMERIE", "CREMERIE L.S.", "EPICERIE", "epicerie", "charcuterie", "boucherie", "poissonnerie"]
     # Dictionnaire des articles courants pour corrections basiques
     correct_names = ["MINI BABYBEL", "YAOURT A BOIRE", "NOIX CAJOU GRILLEES SALEES", "EPINETTE"]
 
